@@ -384,6 +384,7 @@ pub const AllocationCreateInfo = struct {
     pool: ?Pool = null,
     user_data: ?*anyopaque = null,
     priority: f32 = 0,
+    min_alignment: vk.DeviceSize = 0,
 
     fn toC(self: AllocationCreateInfo) c.VmaAllocationCreateInfo {
         return .{
@@ -395,6 +396,7 @@ pub const AllocationCreateInfo = struct {
             .pool = if (self.pool) |p| p.handle else null,
             .pUserData = self.user_data,
             .priority = self.priority,
+            .minAlignment = self.min_alignment,
         };
     }
 };
@@ -671,6 +673,12 @@ pub const Allocator = struct {
     }
 
     // --- explicit allocation ----------------------------------------------
+    pub fn allocateDedicatedMemory(self: Allocator, requirements: *const vk.MemoryRequirements, info: AllocationCreateInfo, p_memory_alloc_next: ?*anyopaque) Error!Allocation {
+        var aci = info.toC();
+        var alloc: c.VmaAllocation = null;
+        try check(c.vmaAllocateDedicatedMemory(self.handle, @ptrCast(requirements), &aci, p_memory_alloc_next, &alloc, null));
+        return .{ .handle = alloc };
+    }
 
     pub fn allocateMemory(self: Allocator, requirements: *const vk.MemoryRequirements, info: AllocationCreateInfo) Error!Allocation {
         var aci = info.toC();
@@ -866,6 +874,15 @@ pub const Allocator = struct {
         return toVk(vk.Buffer, buffer);
     }
 
+    pub fn createDedicatedBuffer(self: Allocator, buffer_info: *const vk.BufferCreateInfo, alloc_info: AllocationCreateInfo, p_memory_alloc_next: ?*anyopaque) Error!BufferResult {
+        var aci = alloc_info.toC();
+        var buffer: c.VkBuffer = null;
+        var alloc: c.VmaAllocation = null;
+        var out: c.VmaAllocationInfo = undefined;
+        try check(c.vmaCreateDedicatedBuffer(self.handle, @ptrCast(buffer_info), &aci, p_memory_alloc_next, &buffer, &alloc, &out));
+        return .{ .buffer = toVk(vk.Buffer, buffer), .allocation = .{ .handle = alloc }, .info = AllocationInfo.from(out) };
+    }
+
     pub fn destroyBuffer(self: Allocator, buffer: vk.Buffer, allocation: Allocation) void {
         c.vmaDestroyBuffer(self.handle, toC(c.VkBuffer, buffer), allocation.handle);
     }
@@ -889,6 +906,15 @@ pub const Allocator = struct {
         var image: c.VkImage = null;
         try check(c.vmaCreateAliasingImage2(self.handle, allocation.handle, local_offset, @ptrCast(image_info), &image));
         return toVk(vk.Image, image);
+    }
+
+    pub fn createDedicatedImage(self: Allocator, image_info: *const vk.ImageCreateInfo, alloc_info: AllocationCreateInfo, p_memory_alloc_next: ?*anyopaque) Error!ImageResult {
+        var aci = alloc_info.toC();
+        var image: c.VkImage = null;
+        var alloc: c.VmaAllocation = null;
+        var out: c.VmaAllocationInfo = undefined;
+        try check(c.vmaCreateDedicatedImage(self.handle, @ptrCast(image_info), &aci, p_memory_alloc_next, &image, &alloc, &out));
+        return .{ .image = toVk(vk.Image, image), .allocation = .{ .handle = alloc }, .info = AllocationInfo.from(out) };
     }
 
     pub fn destroyImage(self: Allocator, image: vk.Image, allocation: Allocation) void {
