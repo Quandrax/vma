@@ -73,11 +73,11 @@ fn check(r: c.VkResult) Error!void {
 /// C API wants opaque pointers. Both are just the same integer, so we convert by
 /// round-tripping through it. A null handle (value 0) becomes a null pointer.
 inline fn toC(comptime CHandle: type, handle: anytype) CHandle {
-    return @ptrFromInt(@intFromEnum(handle));
+    return @ptrFromInt(@backingInt(handle));
 }
 
 inline fn toVk(comptime VkHandle: type, ptr: anytype) VkHandle {
-    return @enumFromInt(@intFromPtr(ptr));
+    return @fromBackingInt(@intFromPtr(ptr));
 }
 
 inline fn optName(p: [*c]const u8) ?[*:0]const u8 {
@@ -92,7 +92,7 @@ inline fn vkFlags(comptime T: type, raw: u32) T {
 // Enums
 // ===========================================================================
 
-pub const MemoryUsage = enum(c_int) {
+pub const MemoryUsage = enum(c_uint) {
     unknown = c.VMA_MEMORY_USAGE_UNKNOWN,
     gpu_only = c.VMA_MEMORY_USAGE_GPU_ONLY,
     cpu_only = c.VMA_MEMORY_USAGE_CPU_ONLY,
@@ -105,7 +105,7 @@ pub const MemoryUsage = enum(c_int) {
     auto_prefer_host = c.VMA_MEMORY_USAGE_AUTO_PREFER_HOST,
 };
 
-pub const DefragmentationMoveOperation = enum(c_int) {
+pub const DefragmentationMoveOperation = enum(c_uint) {
     /// Buffer/image has been recreated at `dstTmp`; copy and replace the handle.
     copy = c.VMA_DEFRAGMENTATION_MOVE_OPERATION_COPY,
     /// Leave the allocation in place this pass.
@@ -388,9 +388,9 @@ pub const AllocationCreateInfo = struct {
     fn toC(self: AllocationCreateInfo) c.VmaAllocationCreateInfo {
         return .{
             .flags = self.flags.toInt(),
-            .usage = @intCast(@intFromEnum(self.usage)),
-            .requiredFlags = @bitCast(self.required_flags),
-            .preferredFlags = @bitCast(self.preferred_flags),
+            .usage = @backingInt(self.usage),
+            .requiredFlags = self.required_flags.toInt(),
+            .preferredFlags = self.preferred_flags.toInt(),
             .memoryTypeBits = self.memory_type_bits,
             .pool = if (self.pool) |p| p.handle else null,
             .pUserData = self.user_data,
@@ -461,7 +461,7 @@ pub const DefragmentationPass = struct {
         return .{ .handle = self.moves[i].dstTmpAllocation };
     }
     pub fn setOperation(self: DefragmentationPass, i: usize, op: DefragmentationMoveOperation) void {
-        self.moves[i].operation = @intCast(@intFromEnum(op));
+        self.moves[i].operation = @backingInt(op);
     }
 };
 
@@ -520,10 +520,10 @@ pub const Allocator = struct {
 
         var ci = std.mem.zeroes(c.VmaAllocatorCreateInfo);
         ci.flags = info.flags.toInt();
-        ci.instance = toC(c.VkInstance, info.instance);
-        ci.physicalDevice = toC(c.VkPhysicalDevice, info.physical_device);
-        ci.device = toC(c.VkDevice, info.device);
-        ci.vulkanApiVersion = @bitCast(info.api_version);
+        ci.instance = @ptrCast(info.instance);
+        ci.physicalDevice = @ptrCast(info.physical_device);
+        ci.device = @ptrCast(info.device);
+        ci.vulkanApiVersion = info.api_version.toU32();
         ci.pVulkanFunctions = &fns;
         ci.preferredLargeHeapBlockSize = info.preferred_large_heap_block_size;
         ci.pAllocationCallbacks = @ptrCast(info.allocation_callbacks);
@@ -546,9 +546,9 @@ pub const Allocator = struct {
         var ai: c.VmaAllocatorInfo = undefined;
         c.vmaGetAllocatorInfo(self.handle, &ai);
         return .{
-            .instance = toVk(vk.Instance, ai.instance),
-            .physical_device = toVk(vk.PhysicalDevice, ai.physicalDevice),
-            .device = toVk(vk.Device, ai.device),
+            .instance = @ptrCast(ai.instance),
+            .physical_device = @ptrCast(ai.physicalDevice),
+            .device = @ptrCast(ai.device),
         };
     }
 
@@ -1095,7 +1095,7 @@ comptime {
 
 fn refAllDeclsRecursive(comptime T: type) void {
     inline for (comptime std.meta.declarations(T)) |decl| {
-        const field = @field(T, decl.name);
+        const field = @field(T, decl);
         if (@TypeOf(field) == type) {
             switch (@typeInfo(field)) {
                 .@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursive(field),
