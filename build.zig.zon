@@ -33,8 +33,8 @@
     // internet connectivity.
     .dependencies = .{
         .VulkanMemoryAllocator = .{
-            .url = "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.3.0.tar.gz",
-            .hash = "N-V-__8AAIutPgABk6NlXZhlJ5P8qVECvakZIKoO94h7xUOw",
+            .url = "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.5.0.tar.gz",
+            .hash = "N-V-__8AAIwTQQCo2Vn2vnA6AyuuVuy1gDUXA4Hld0ROVTJe",
         },
         .vulkan_headers = .{
             .url = "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.313.tar.gz",

@@ -92,7 +92,7 @@ inline fn vkFlags(comptime T: type, raw: u32) T {
 // Enums
 // ===========================================================================
 
-pub const MemoryUsage = enum(c_uint) {
+pub const MemoryUsage = enum(c_int) {
     unknown = c.VMA_MEMORY_USAGE_UNKNOWN,
     gpu_only = c.VMA_MEMORY_USAGE_GPU_ONLY,
     cpu_only = c.VMA_MEMORY_USAGE_CPU_ONLY,
@@ -105,7 +105,7 @@ pub const MemoryUsage = enum(c_uint) {
     auto_prefer_host = c.VMA_MEMORY_USAGE_AUTO_PREFER_HOST,
 };
 
-pub const DefragmentationMoveOperation = enum(c_uint) {
+pub const DefragmentationMoveOperation = enum(c_int) {
     /// Buffer/image has been recreated at `dstTmp`; copy and replace the handle.
     copy = c.VMA_DEFRAGMENTATION_MOVE_OPERATION_COPY,
     /// Leave the allocation in place this pass.
@@ -129,7 +129,8 @@ pub const AllocatorCreateFlags = packed struct(u32) {
     khr_maintenance4: bool = false, // 0x0080
     khr_maintenance5: bool = false, // 0x0100
     khr_external_memory_win32: bool = false, // 0x0200
-    _reserved: u22 = 0,
+    khr_extended_flags: bool = false, // 0x0400
+    _reserved: u21 = 0,
 
     pub inline fn toInt(self: AllocatorCreateFlags) u32 {
         return @bitCast(self);
@@ -389,7 +390,7 @@ pub const AllocationCreateInfo = struct {
     fn toC(self: AllocationCreateInfo) c.VmaAllocationCreateInfo {
         return .{
             .flags = self.flags.toInt(),
-            .usage = @backingInt(self.usage),
+            .usage = @intCast(@backingInt(self.usage)),
             .requiredFlags = self.required_flags.toInt(),
             .preferredFlags = self.preferred_flags.toInt(),
             .memoryTypeBits = self.memory_type_bits,
@@ -463,7 +464,7 @@ pub const DefragmentationPass = struct {
         return .{ .handle = self.moves[i].dstTmpAllocation };
     }
     pub fn setOperation(self: DefragmentationPass, i: usize, op: DefragmentationMoveOperation) void {
-        self.moves[i].operation = @backingInt(op);
+        self.moves[i].operation = @intCast(@backingInt(op));
     }
 };
 
@@ -1071,6 +1072,7 @@ comptime {
     assert(bitOf(AllocatorCreateFlags, "khr_maintenance4") == c.VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE4_BIT);
     assert(bitOf(AllocatorCreateFlags, "khr_maintenance5") == c.VMA_ALLOCATOR_CREATE_KHR_MAINTENANCE5_BIT);
     assert(bitOf(AllocatorCreateFlags, "khr_external_memory_win32") == c.VMA_ALLOCATOR_CREATE_KHR_EXTERNAL_MEMORY_WIN32_BIT);
+    assert(bitOf(AllocatorCreateFlags, "khr_extended_flags") == c.VMA_ALLOCATOR_CREATE_KHR_EXTENDED_FLAGS_BIT);
 
     assert(bitOf(AllocationCreateFlags, "dedicated_memory") == c.VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
     assert(bitOf(AllocationCreateFlags, "never_allocate") == c.VMA_ALLOCATION_CREATE_NEVER_ALLOCATE_BIT);
